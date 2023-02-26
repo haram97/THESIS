@@ -8,17 +8,31 @@ def main():
     parser.add_argument('--doc', dest='doc', type=str, default="Example.txt", help='Path to the input txt requirements document. The requirements should be seperated by line breaks.')
     parser.add_argument('--mode', dest='mode', type=int, default=3, help='Mode selection: 1 for detection, 2 for resolution, and 3 for both. Default value=3')
     parser.add_argument('--detection', dest='dfeatures', type=str, default="Ensemble", help='Detection features: LF for language features, FE for features embedding, and Ensemble for both. Default value=Ensemble')
+    parser.add_argument('--pre', dest='doc', type=int, default=0, help='Use pre processed')
+
     args = parser.parse_args()
     df=preprocess(args.doc)
+
+    # if not os.path.isdir("pre_processed"):
+    #     os.makedirs("pre_processed")
+    #
+    # preProcessFilePath = "pre_processed\\"+args.doc
+    # if os.path.isfile(preProcessFilePath):
+    #     df = pd.read_pickle(preProcessFilePath)
+    # else:
+    #     df = preprocess(args.doc)
+    #     df.to_pickle(preProcessFilePath)
+
     if not os.path.isdir("output"):
         os.makedirs("output")
+
     if args.mode == 1:
         ddf=detection(df,args.dfeatures)
         ddf.to_excel("output/detection.xlsx")
     elif args.mode == 2:
         rdf=resolution(df)
         rdf.to_excel("output/resolution.xlsx")
-    elif args.mode == 3:        
+    elif args.mode == 3:
         ddf=detection(df,args.dfeatures)
         ddf.to_excel("output/detection.xlsx",index=False)
         rdf=resolution(df)
@@ -65,8 +79,16 @@ def getLFpred(df):
         if col not in X.columns:
             X[col]=0
     X['Id']=df['Id']
+
+    # with open('waqasTrainCols.txt', 'w') as f:
+    #     for line in X[trainCols]:
+    #         f.write(f"{line}\n")
+    #
+    #     for line in trainCols:
+    #         f.write(f"{line}\n")
+
     ML_LF_Detection=loadObj("artifact/ML_LF-detection.Anaphora")
-    ML_LF_D_predictions=ML_LF_Detection.predict_proba(X.drop('Id',axis=1))
+    ML_LF_D_predictions=ML_LF_Detection.predict_proba(X[trainCols].drop('Id',axis=1).values)
     return ML_LF_D_predictions, X
 
 def getFEpred(df):
@@ -104,7 +126,8 @@ def resolution(df):
     return testdf
 
 def preprocess(doc):
-    txt=open(doc,"r").read()
+    txt=open(doc,"r", encoding="utf8").read()
+    # txt = open(doc, "r").read()
     sentences=[applynlp(s,nlp) for s in sent_tokenize(txt)]
     pronouns=["I","me","my","mine","myself","you","you","your","yours","yourself","he","him","his","his","himself","she","her","her","hers","herself","it","it","its","itself","we","us","our","ours","ourselves","you","you","your","yours","yourselves","they","them","their","theirs","themselves"]
     li=[]
